@@ -1,0 +1,64 @@
+# .gitignore
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Docker volumes
+postgres_data/
+homeassistant_config/
+musicassistant_data/
+mosquitto_data/
+mosquitto_log/
+vscode_data/
+emhass_config/
+prometheus_data/
+grafana_data/
+loki_data/
+tempo_data/
+jaeger_data/
+
+# Backups
+backups/
+*.sql
+*.tar.gz
+
+# Test reports
+reports/
+htmlcov/
+.coverage
+.pytest_cache/
+*.pyc
+__pycache__/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Security
+trivy-cache/
+*.pem
+*.key
+secrets/
+
+# SonarQube
+.sonar/
+.scannerwork/
+sonarqube_data/
+sonarqube_extensions/
+sonarqube_logs/
+
+# Temporary files
+tmp/
+temp/
