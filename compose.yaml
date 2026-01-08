@@ -6,8 +6,9 @@ networks:
   backend:
     driver: bridge
     internal: true
-  monitoring:
-    driver: bridge
+  obstackd:
+    external: true
+    name: obstackd_default
 
 volumes:
   homeassistant_config:
@@ -17,11 +18,6 @@ volumes:
   mosquitto_data:
   mosquitto_log:
   vscode_data:
-  prometheus_data:
-  grafana_data:
-  loki_data:
-  tempo_data:
-  jaeger_data:
 
 services:
   # ===========================
@@ -36,6 +32,7 @@ services:
     networks:
       - frontend
       - backend
+      - obstackd
     ports:
       - "8123:8123"
     volumes:
@@ -45,6 +42,10 @@ services:
       - TZ=UTC
       - PUID=1000
       - PGID=1000
+      # OpenTelemetry configuration
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - OTEL_SERVICE_NAME=homeassistant
+      - OTEL_RESOURCE_ATTRIBUTES=service.namespace=home-automation,deployment.environment=production
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8123"]
       interval: 30s
@@ -52,10 +53,10 @@ services:
       retries: 3
       start_period: 60s
     logging:
-      driver: loki
+      driver: json-file
       options:
-        loki-url: "http://loki:3100/loki/api/v1/push"
-        loki-batch-size: "400"
+        max-size: "10m"
+        max-file: "3"
         labels: "service=homeassistant,environment=production"
     depends_on:
       postgres:
@@ -74,12 +75,15 @@ services:
     networks:
       - frontend
       - backend
+      - obstackd
     ports:
       - "8095:8095"
     volumes:
       - musicassistant_data:/data
     environment:
       - TZ=UTC
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - OTEL_SERVICE_NAME=musicassistant
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8095/health"]
       interval: 30s
@@ -87,10 +91,10 @@ services:
       retries: 3
       start_period: 45s
     logging:
-      driver: loki
+      driver: json-file
       options:
-        loki-url: "http://loki:3100/loki/api/v1/push"
-        labels: "service=musicassistant,environment=production"
+        max-size: "10m"
+        max-file: "3"
     labels:
       - "prometheus.scrape=true"
 
@@ -100,6 +104,7 @@ services:
     restart: unless-stopped
     networks:
       - backend
+      - obstackd
     ports:
       - "5432:5432"
     volumes:
@@ -116,10 +121,10 @@ services:
       timeout: 5s
       retries: 5
     logging:
-      driver: loki
+      driver: json-file
       options:
-        loki-url: "http://loki:3100/loki/api/v1/push"
-        labels: "service=postgres,environment=production"
+        max-size: "10m"
+        max-file: "3"
     labels:
       - "prometheus.scrape=true"
       - "prometheus.port=9187"
@@ -130,15 +135,19 @@ services:
     restart: unless-stopped
     networks:
       - backend
-      - monitoring
+      - obstackd
     environment:
       - DATA_SOURCE_NAME=postgresql://hauser:${POSTGRES_PASSWORD:-changeme}@postgres:5432/homeassistant?sslmode=disable
     depends_on:
       - postgres
     logging:
-      driver: loki
+      driver: json-file
       options:
-        loki-url: "http://loki:3100/loki/api/v1/push"
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "prometheus.scrape=true"
+      - "prometheus.port=9187"
 
   emhass:
     image: davidusb/emhass-docker-standalone:latest
@@ -146,6 +155,7 @@ services:
     restart: unless-stopped
     networks:
       - backend
+      - obstackd
     ports:
       - "5000:5000"
     volumes:
@@ -153,16 +163,18 @@ services:
     environment:
       - TZ=UTC
       - LOCAL_COSTFUN=profit
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - OTEL_SERVICE_NAME=emhass
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000"]
       interval: 30s
       timeout: 10s
       retries: 3
     logging:
-      driver: loki
+      driver: json-file
       options:
-        loki-url: "http://loki:3100/loki/api/v1/push"
-        labels: "service=emhass,environment=production"
+        max-size: "10m"
+        max-file: "3"
 
   mosquitto:
     image: eclipse-mosquitto:2.0
@@ -170,6 +182,7 @@ services:
     restart: unless-stopped
     networks:
       - backend
+      - obstackd
     ports:
       - "1883:1883"
       - "9001:9001"
@@ -183,10 +196,10 @@ services:
       timeout: 10s
       retries: 3
     logging:
-      driver: loki
+      driver: json-file
       options:
-        loki-url: "http://loki:3100/loki/api/v1/push"
-        labels: "service=mosquitto,environment=production"
+        max-size: "10m"
+        max-file: "3"
 
   vscode:
     image: lscr.io/linuxserver/code-server:latest
@@ -212,136 +225,53 @@ services:
       timeout: 10s
       retries: 3
     logging:
-      driver: loki
+      driver: json-file
       options:
-        loki-url: "http://loki:3100/loki/api/v1/push"
-        labels: "service=vscode,environment=production"
+        max-size: "10m"
+        max-file: "3"
 
   # ===========================
-  # OBSERVABILITY STACK
+  # OBSERVABILITY INTEGRATION
   # ===========================
 
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: prometheus
+  # OpenTelemetry Collector sidecar for application metrics
+  otel_sidecar:
+    image: otel/opentelemetry-collector-contrib:0.99.0
+    container_name: otel_sidecar
     restart: unless-stopped
     networks:
-      - monitoring
+      - backend
+      - obstackd
     ports:
-      - "9090:9090"
+      - "4317:4317"  # OTLP gRPC receiver
+      - "4318:4318"  # OTLP HTTP receiver
+      - "8888:8888"  # Prometheus metrics (collector telemetry)
+      - "8889:8889"  # Prometheus exporter (app metrics)
     volumes:
-      - prometheus_data:/prometheus
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./alerts.yml:/etc/prometheus/alerts.yml:ro
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention.time=30d'
-      - '--web.enable-lifecycle'
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    logging:
-      driver: json-file
-
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    restart: unless-stopped
-    networks:
-      - frontend
-      - monitoring
-    ports:
-      - "3000:3000"
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./grafana-provisioning:/etc/grafana/provisioning:ro
+      - ./otel-sidecar-config.yaml:/etc/otel/config.yaml:ro
+    command: ["--config=/etc/otel/config.yaml"]
     environment:
-      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-changeme}
-      - GF_INSTALL_PLUGINS=grafana-piechart-panel
-      - GF_FEATURE_TOGGLES_ENABLE=traceqlEditor
+      - OTEL_COLLECTOR_ENDPOINT=otel-collector:4317
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    depends_on:
-      - prometheus
-      - loki
-      - tempo
-    logging:
-      driver: json-file
-
-  loki:
-    image: grafana/loki:latest
-    container_name: loki
-    restart: unless-stopped
-    networks:
-      - monitoring
-    ports:
-      - "3100:3100"
-    volumes:
-      - loki_data:/loki
-      - ./loki-config.yml:/etc/loki/local-config.yaml:ro
-    command: -config.file=/etc/loki/local-config.yaml
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3100/ready"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:13133/"]
       interval: 30s
       timeout: 10s
       retries: 3
     logging:
       driver: json-file
-
-  tempo:
-    image: grafana/tempo:latest
-    container_name: tempo
-    restart: unless-stopped
-    networks:
-      - monitoring
-    ports:
-      - "3200:3200"
-      - "4317:4317"
-      - "4318:4318"
-    volumes:
-      - tempo_data:/tmp/tempo
-      - ./tempo-config.yml:/etc/tempo/tempo.yaml:ro
-    command: -config.file=/etc/tempo/tempo.yaml
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3200/ready"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    logging:
-      driver: json-file
-
-  jaeger:
-    image: jaegertracing/all-in-one:latest
-    container_name: jaeger
-    restart: unless-stopped
-    networks:
-      - monitoring
-    ports:
-      - "16686:16686"
-      - "14268:14268"
-    environment:
-      - COLLECTOR_OTLP_ENABLED=true
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:14269/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    logging:
-      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "prometheus.scrape=true"
+      - "prometheus.port=8888"
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
     container_name: cadvisor
     restart: unless-stopped
     networks:
-      - monitoring
+      - obstackd
     ports:
       - "8080:8080"
     volumes:
@@ -355,13 +285,19 @@ services:
       - /dev/kmsg
     logging:
       driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "prometheus.scrape=true"
+      - "prometheus.port=8080"
 
   node_exporter:
     image: prom/node-exporter:latest
     container_name: node_exporter
     restart: unless-stopped
     networks:
-      - monitoring
+      - obstackd
     ports:
       - "9100:9100"
     command:
@@ -374,18 +310,23 @@ services:
       - /:/rootfs:ro
     logging:
       driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "prometheus.scrape=true"
+      - "prometheus.port=9100"
 
   # ===========================
   # CI/CD & SECURITY
   # ===========================
 
-  # Watchtower for automatic updates
   watchtower:
     image: containrrr/watchtower:latest
     container_name: watchtower
     restart: unless-stopped
     networks:
-      - monitoring
+      - backend
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
@@ -394,14 +335,16 @@ services:
       - WATCHTOWER_LABEL_ENABLE=true
     logging:
       driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  # Trivy for vulnerability scanning
   trivy:
     image: aquasec/trivy:latest
     container_name: trivy
     restart: "no"
     networks:
-      - monitoring
+      - backend
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./trivy-cache:/root/.cache/
@@ -410,8 +353,10 @@ services:
       - "8081:8081"
     logging:
       driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  # SonarQube for code quality
   sonarqube:
     image: sonarqube:community
     container_name: sonarqube
@@ -438,19 +383,21 @@ services:
       retries: 3
     logging:
       driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ===========================
   # TESTING SERVICES
   # ===========================
 
-  # Test runner container
   test_runner:
     image: python:3.11-slim
     container_name: test_runner
     restart: "no"
     networks:
       - backend
-      - monitoring
+      - obstackd
     volumes:
       - ./tests:/tests
       - ./reports:/reports
@@ -461,9 +408,15 @@ services:
       - HA_URL=http://homeassistant:8123
       - MQTT_HOST=mosquitto
       - POSTGRES_HOST=postgres
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - GRAFANA_URL=http://grafana:3000
+      - PROMETHEUS_URL=http://prometheus:9090
     depends_on:
       - homeassistant
       - mosquitto
       - postgres
     logging:
       driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
