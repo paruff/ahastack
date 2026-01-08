@@ -1,0 +1,158 @@
+# otel-sidecar-config.yaml
+# OpenTelemetry Collector configuration for home automation services
+# This collector receives telemetry from application services and forwards to Obstackd
+
+receivers:
+  # OTLP receivers for application telemetry
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - "http://*"
+            - "https://*"
+
+  # Prometheus receiver to scrape application metrics
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'homeassistant'
+          scrape_interval: 30s
+          static_configs:
+            - targets: ['homeassistant:8123']
+          metrics_path: '/api/prometheus'
+          
+        - job_name: 'postgres-exporter'
+          scrape_interval: 15s
+          static_configs:
+            - targets: ['postgres_exporter:9187']
+            
+        - job_name: 'cadvisor'
+          scrape_interval: 15s
+          static_configs:
+            - targets: ['cadvisor:8080']
+            
+        - job_name: 'node-exporter'
+          scrape_interval: 15s
+          static_configs:
+            - targets: ['node_exporter:9100']
+
+processors:
+  # Batch processor for efficiency
+  batch:
+    timeout: 10s
+    send_batch_size: 1024
+    
+  # Resource processor to add service metadata
+  resource:
+    attributes:
+      - key: service.namespace
+        value: home-automation
+        action: insert
+      - key: deployment.environment
+        value: production
+        action: insert
+      - key: host.name
+        from_attribute: host.name
+        action: upsert
+        
+  # Memory limiter to prevent OOM
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+    spike_limit_mib: 128
+
+  # Filter processor to drop unnecessary metrics
+  filter:
+    metrics:
+      exclude:
+        match_type: regexp
+        metric_names:
+          - .*_bucket
+          - .*_sum
+          - .*_count
+
+  # Attributes processor for enrichment
+  attributes:
+    actions:
+      - key: collector.name
+        value: otel-sidecar
+        action: insert
+
+extensions:
+  # Health check extension
+  health_check:
+    endpoint: 0.0.0.0:13133
+    
+  # pprof for debugging
+  pprof:
+    endpoint: 0.0.0.0:1777
+    
+  # zpages for diagnostics
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+exporters:
+  # Forward to Obstackd OpenTelemetry Collector
+  otlp:
+    endpoint: otel-collector:4317
+    tls:
+      insecure: true
+    sending_queue:
+      enabled: true
+      num_consumers: 10
+      queue_size: 1000
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 300s
+      
+  # Prometheus exporter for direct scraping
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    namespace: home_automation
+    const_labels:
+      environment: production
+      
+  # Logging exporter for debugging
+  logging:
+    verbosity: detailed
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+service:
+  extensions: [health_check, pprof, zpages]
+  
+  pipelines:
+    # Traces pipeline
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, attributes, batch]
+      exporters: [otlp, logging]
+      
+    # Metrics pipeline
+    metrics:
+      receivers: [otlp, prometheus]
+      processors: [memory_limiter, resource, attributes, filter, batch]
+      exporters: [otlp, prometheus, logging]
+      
+    # Logs pipeline
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, attributes, batch]
+      exporters: [otlp, logging]
+
+  telemetry:
+    logs:
+      level: info
+      development: false
+      encoding: json
+      output_paths:
+        - stdout
+    metrics:
+      level: detailed
+      address: 0.0.0.0:8888
