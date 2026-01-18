@@ -180,13 +180,6 @@ supply-chain-check: ## Check supply chain security
 @docker run –rm -v $(PWD):/src aquasec/trivy:latest config /src || true
 @docker run –rm -v $(PWD):/src aquasec/trivy:latest fs –security-checks config,secret /src || true
 
-code-quality: ## Run SonarQube analysis
-@echo “$(GREEN)Running SonarQube analysis…$(NC)”
-@docker run –rm   
--e SONAR_HOST_URL=http://sonarqube:9000   
--v $(PWD):/usr/src   
-–network=home-automation_frontend   
-sonarsource/sonar-scanner-cli || echo “$(YELLOW)SonarQube not available$(NC)”
 
 unit-test: ## Run unit tests
 @echo “$(GREEN)Running unit tests…$(NC)”
@@ -310,5 +303,4 @@ docs: ## Open documentation URLs
 @echo “  Prometheus:      http://localhost:9090”
 @echo “  Home Assistant:  http://localhost:8123”
 @echo “  VS Code:         http://localhost:8443”
-@echo “  SonarQube:       http://localhost:9000”
 @echo “  Obstackd GitHub: https://github.com/paruff/Obstackd”

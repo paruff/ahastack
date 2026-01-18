@@ -1,8 +1,10 @@
 # tests/unit/test_mqtt_connection.py
 """Unit tests for MQTT connection handling"""
-import pytest
+
 from unittest.mock import Mock, patch
+
 import paho.mqtt.client as mqtt
+import pytest
 
 
 class MQTTConnection:
@@ -31,7 +33,7 @@ def test_mqtt_initialization(mqtt_connection):
     assert mqtt_connection.connected is False
 
 
-@patch('paho.mqtt.client.Client')
+@patch("paho.mqtt.client.Client")
 def test_mqtt_connect(mock_client, mqtt_connection):
     """Test MQTT connection establishment"""
     mqtt_connection.connect()

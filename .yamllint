@@ -19,4 +19,3 @@ ignore: |
   .venv/
   node_modules/
   reports/
- DATABASE sonarqube TO hauser;
