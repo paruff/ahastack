@@ -182,6 +182,7 @@ jobs:
 
       - name: Start services
         run: |
+          docker network create obstackd_default || true
           docker compose up -d postgres mosquitto
           sleep 10
 
@@ -227,6 +228,7 @@ jobs:
 
       - name: Start all services
         run: |
+          docker network create obstackd_default || true
           docker compose up -d
           sleep 30
 
