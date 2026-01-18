@@ -1,11 +1,12 @@
 # tests/e2e/test_homeassistant_bdd.py
 """BDD-style end-to-end tests for Home Assistant"""
 
-import pytest
-from pytest_bdd import scenarios, given, when, then, parsers
-import requests
-import time
 import os
+import time
+
+import pytest
+import requests
+from pytest_bdd import given, parsers, scenarios, then, when
 
 # Load BDD scenarios
 scenarios("../features/homeassistant.feature")

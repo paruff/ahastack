@@ -1,10 +1,11 @@
 # tests/integration/test_postgres_integration.py
 """Integration tests for PostgreSQL database"""
 
-import pytest
-import psycopg2
 import os
 import time
+
+import psycopg2
+import pytest
 
 
 @pytest.fixture(scope="module")

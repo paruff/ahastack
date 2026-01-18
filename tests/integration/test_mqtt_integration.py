@@ -1,10 +1,11 @@
 # tests/integration/test_mqtt_integration.py
 """Integration tests for MQTT broker"""
 
-import pytest
-import paho.mqtt.client as mqtt
-import time
 import os
+import time
+
+import paho.mqtt.client as mqtt
+import pytest
 
 
 @pytest.fixture(scope="module")

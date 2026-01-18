@@ -1,9 +1,10 @@
 # tests/unit/test_mqtt_connection.py
 """Unit tests for MQTT connection handling"""
 
-import pytest
 from unittest.mock import Mock, patch
+
 import paho.mqtt.client as mqtt
+import pytest
 
 
 class MQTTConnection:

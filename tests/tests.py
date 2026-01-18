@@ -1,9 +1,10 @@
 # tests/unit/test_mqtt_connection.py
 """Unit tests for MQTT connection handling"""
 
-import pytest
 from unittest.mock import Mock, patch
+
 import paho.mqtt.client as mqtt
+import pytest
 
 
 class MQTTConnection:
@@ -42,10 +43,11 @@ def test_mqtt_connect(mock_client, mqtt_connection):
 
 # tests/integration/test_postgres_integration.py
 """Integration tests for PostgreSQL database"""
-import pytest
-import psycopg2
 import os
 import time
+
+import psycopg2
+import pytest
 
 
 @pytest.fixture(scope="module")
@@ -130,10 +132,11 @@ def test_database_write_read(db_connection):
 
 # tests/integration/test_mqtt_integration.py
 """Integration tests for MQTT broker"""
-import pytest
-import paho.mqtt.client as mqtt
-import time
 import os
+import time
+
+import paho.mqtt.client as mqtt
+import pytest
 
 
 @pytest.fixture(scope="module")
@@ -183,11 +186,12 @@ def test_mqtt_publish_subscribe(mqtt_client):
 
 # tests/e2e/test_homeassistant_bdd.py
 """BDD-style end-to-end tests for Home Assistant"""
-import pytest
-from pytest_bdd import scenarios, given, when, then, parsers
-import requests
-import time
 import os
+import time
+
+import pytest
+import requests
+from pytest_bdd import given, parsers, scenarios, then, when
 
 # Load BDD scenarios
 scenarios("../features/homeassistant.feature")
@@ -272,9 +276,10 @@ def message_delivered():
 
 # tests/e2e/test_observability_stack.py
 """End-to-end tests for observability stack"""
+import time
+
 import pytest
 import requests
-import time
 
 
 @pytest.fixture
