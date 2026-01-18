@@ -24,17 +24,17 @@ receivers:
           static_configs:
             - targets: ['homeassistant:8123']
           metrics_path: '/api/prometheus'
-          
+
         - job_name: 'postgres-exporter'
           scrape_interval: 15s
           static_configs:
             - targets: ['postgres_exporter:9187']
-            
+
         - job_name: 'cadvisor'
           scrape_interval: 15s
           static_configs:
             - targets: ['cadvisor:8080']
-            
+
         - job_name: 'node-exporter'
           scrape_interval: 15s
           static_configs:
@@ -45,7 +45,7 @@ processors:
   batch:
     timeout: 10s
     send_batch_size: 1024
-    
+
   # Resource processor to add service metadata
   resource:
     attributes:
@@ -58,7 +58,7 @@ processors:
       - key: host.name
         from_attribute: host.name
         action: upsert
-        
+
   # Memory limiter to prevent OOM
   memory_limiter:
     check_interval: 1s
@@ -86,11 +86,11 @@ extensions:
   # Health check extension
   health_check:
     endpoint: 0.0.0.0:13133
-    
+
   # pprof for debugging
   pprof:
     endpoint: 0.0.0.0:1777
-    
+
   # zpages for diagnostics
   zpages:
     endpoint: 0.0.0.0:55679
@@ -110,14 +110,14 @@ exporters:
       initial_interval: 5s
       max_interval: 30s
       max_elapsed_time: 300s
-      
+
   # Prometheus exporter for direct scraping
   prometheus:
     endpoint: "0.0.0.0:8889"
     namespace: home_automation
     const_labels:
       environment: production
-      
+
   # Logging exporter for debugging
   logging:
     verbosity: detailed
@@ -126,20 +126,20 @@ exporters:
 
 service:
   extensions: [health_check, pprof, zpages]
-  
+
   pipelines:
     # Traces pipeline
     traces:
       receivers: [otlp]
       processors: [memory_limiter, resource, attributes, batch]
       exporters: [otlp, logging]
-      
+
     # Metrics pipeline
     metrics:
       receivers: [otlp, prometheus]
       processors: [memory_limiter, resource, attributes, filter, batch]
       exporters: [otlp, prometheus, logging]
-      
+
     # Logs pipeline
     logs:
       receivers: [otlp]

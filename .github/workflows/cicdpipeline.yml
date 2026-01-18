@@ -93,7 +93,7 @@ jobs:
           docker pull ghcr.io/home-assistant/home-assistant:2024.1
           docker pull postgres:16-alpine
           docker pull eclipse-mosquitto:2.0
-          
+
           trivy image --severity HIGH,CRITICAL ghcr.io/home-assistant/home-assistant:2024.1
           trivy image --severity HIGH,CRITICAL postgres:16-alpine
           trivy image --severity HIGH,CRITICAL eclipse-mosquitto:2.0

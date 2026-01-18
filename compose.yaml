@@ -23,7 +23,7 @@ services:
   # ===========================
   # CORE SERVICES
   # ===========================
-  
+
   homeassistant:
     image: ghcr.io/home-assistant/home-assistant:2024.1
     container_name: homeassistant
