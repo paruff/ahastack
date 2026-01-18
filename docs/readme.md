@@ -36,9 +36,8 @@ This project integrates with [Obstackd](https://github.com/paruff/Obstackd) - a 
 
 ### Security & CI/CD
 - **Trivy** - Vulnerability scanning
-- **SonarQube** - Code quality analysis
 - **Watchtower** - Automatic container updates
-- **GitHub Actions** - CI/CD pipeline
+- **GitHub Actions** - CI/CD pipeline with SonarCloud integration
 
 ## Prerequisites
 
@@ -110,7 +109,6 @@ make up-standalone
 | **Tempo** | http://localhost:3200 | None | From Obstackd |
 | Home Assistant | http://localhost:8123 | Configure on first run | |
 | VS Code | http://localhost:8443 | (from .env) | |
-| SonarQube | http://localhost:9000 | admin / admin | |
 | Music Assistant | http://localhost:8095 | None | |
 
 ## Observability Architecture
@@ -375,7 +373,7 @@ Automated pipeline with Obstackd integration:
 8. **Deploy** - Start services with observability
 9. **Observability Test** - Verify telemetry pipeline
 10. **E2E Tests** - Full system testing
-11. **Code Quality** - SonarQube analysis
+11. **Code Quality** - SonarCloud analysis (runs in GitHub Actions)
 
 ### Local CI Pipeline
 
