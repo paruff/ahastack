@@ -5,9 +5,6 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pg_stat_statements";
 
--- Create SonarQube database
-CREATE DATABASE sonarqube;
-
 -- Performance tuning
 ALTER SYSTEM SET shared_buffers = '256MB';
 ALTER SYSTEM SET effective_cache_size = '1GB';
@@ -23,4 +20,3 @@ ALTER SYSTEM SET max_wal_size = '4GB';
 
 -- Grant permissions
 GRANT ALL PRIVILEGES ON DATABASE homeassistant TO hauser;
-GRANT ALL PRIVILEGES ON DATABASE sonarqube TO hauser;
