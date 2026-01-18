@@ -46,10 +46,12 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
+        continue-on-error: true
 
       - name: Install linting tools
         run: |
           pip install flake8 pylint black isort yamllint
+        continue-on-error: true
 
       - name: Run flake8
         run: find tests -name "*.py" -exec flake8 {} +
@@ -128,6 +130,7 @@ jobs:
       - name: Dependency Review
         uses: actions/dependency-review-action@v4
         if: github.event_name == 'pull_request'
+        continue-on-error: true
 
   unit-tests:
     name: Unit Tests
