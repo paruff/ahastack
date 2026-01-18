@@ -269,7 +269,8 @@ jobs:
           fetch-depth: 0
 
       - name: SonarCloud Scan
-        if: ${{ secrets.SONAR_TOKEN != '' }}
+        # Skip for forks as they won't have SONAR_TOKEN secret
+        if: github.event.pull_request.head.repo.full_name == github.repository || github.event_name != 'pull_request'
         uses: SonarSource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
